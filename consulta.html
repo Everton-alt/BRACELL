@@ -1,70 +1,54 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Consulta Industrial - Multilote</title>
-    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; padding: 15px; color: #2c3e50; }
-        .card { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 5px; box-sizing: border-box; font-size: 16px; margin-bottom: 15px; }
-        .result-block { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; background: #fafafa; }
-        .data-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 3px 0; }
-        .label { font-weight: bold; color: #7f8c8d; }
-        .header-compact { font-size: 0.75rem; border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 5px; color: #555; }
-        .qr-container { display: flex; justify-content: space-around; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; }
-        .qr-box { text-align: center; }
-        .qr-box span { display: block; font-size: 0.65rem; font-weight: bold; margin-top: 4px; }
+        body { font-family: sans-serif; background: #eef2f3; padding: 20px; }
+        #searchInput { width: 100%; max-width: 500px; padding: 15px; font-size: 18px; border: 2px solid #3498db; border-radius: 8px; display: block; margin: 0 auto; }
+        .result-block { background: white; max-width: 600px; margin: 20px auto; padding: 20px; border-left: 5px solid #27ae60; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .qr-container { display: flex; justify-content: space-around; margin-top: 15px; }
+        .qr-box { text-align: center; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
-
-<div class="card">
-    <input type="text" id="searchInput" placeholder="Buscar código..." onkeyup="consultar()">
+    <input type="text" id="searchInput" placeholder="Busque por código antigo ou novo..." onkeyup="consultar()">
     <div id="resultado"></div>
-</div>
 
-<script>
-    function consultar() {
-        const val = document.getElementById("searchInput").value;
-        const resDiv = document.getElementById("resultado");
-        const dados = JSON.parse(localStorage.getItem('dadosEtiquetas'));
-        
-        if (!val || !dados) { resDiv.innerHTML = ""; return; }
+    <script>
+        const supabase = supabase.createClient(
+            'https://kdbrlmvcxzgwylpdcfmq.supabase.co', 
+            'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg'
+        );
 
-        const itens = dados.filter(r => String(r['CODIGO ANTIGO']) === val || String(r['CODIGO NOVO']) === val);
+        async function consultar() {
+            const val = document.getElementById("searchInput").value;
+            const resDiv = document.getElementById("resultado");
+            if (val.length < 3) { resDiv.innerHTML = ""; return; }
 
-        if (itens.length > 0) {
-            resDiv.innerHTML = ""; 
-            
-            itens.forEach((item, index) => {
-                const bloco = document.createElement("div");
-                bloco.className = "result-block";
-                bloco.innerHTML = `
-                    <div class="header-compact">
-                        <strong>Antigo:</strong> ${item['CODIGO ANTIGO']} | 
-                        <strong>Novo:</strong> ${item['CODIGO NOVO']} | 
-                        <strong>UMB:</strong> ${item['UMB']}
+            const { data } = await supabase.from('etiquetas').select('*').or(`codigo_antigo.eq.${val},codigo_novo.eq.${val}`);
+
+            if (data && data.length > 0) {
+                resDiv.innerHTML = data.map((item, i) => `
+                    <div class="result-block">
+                        <h3 style="margin-top:0">${item.descricao}</h3>
+                        <p><strong>Lote:</strong> ${item.lote} | <strong>Ano:</strong> ${item.ano}</p>
+                        <div class="qr-container">
+                            <div class="qr-box"><div id="qrD${i}"></div>DOC</div>
+                            <div class="qr-box"><div id="qrA${i}"></div>ANO</div>
+                            <div class="qr-box"><div id="qrI${i}"></div>IMP</div>
+                        </div>
                     </div>
-                    <div class="data-row"><span class="label">Descrição:</span><span>${item['DESCRIÇÃO']}</span></div>
-                    <div class="data-row"><span class="label">Lote:</span><span>${item['Lote']}</span></div>
-                    <div class="data-row"><span class="label">Ano:</span><span>${item['ANO']}</span></div>
-                    <div class="qr-container">
-                        <div class="qr-box"><div id="qrDoc_${index}"></div><span>DOC</span></div>
-                        <div class="qr-box"><div id="qrAno_${index}"></div><span>ANO</span></div>
-                        <div class="qr-box"><div id="qrImp_${index}"></div><span>IMP</span></div>
-                    </div>`;
+                `).join('');
                 
-                resDiv.appendChild(bloco);
-                
-                new QRCode(document.getElementById(`qrDoc_${index}`), {text: String(item['DOCUMENTO']), width: 70, height: 70});
-                new QRCode(document.getElementById(`qrAno_${index}`), {text: String(item['ANO']), width: 70, height: 70});
-                new QRCode(document.getElementById(`qrImp_${index}`), {text: "ZT231", width: 70, height: 70});
-            });
-        } else {
-            resDiv.innerHTML = "<p style='text-align:center'>Nenhum registro encontrado.</p>";
+                data.forEach((item, i) => {
+                    new QRCode(document.getElementById(`qrD${i}`), {text: item.documento, width: 80, height: 80});
+                    new QRCode(document.getElementById(`qrA${i}`), {text: String(item.ano), width: 80, height: 80});
+                    new QRCode(document.getElementById(`qrI${i}`), {text: item.impressora, width: 80, height: 80});
+                });
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>
