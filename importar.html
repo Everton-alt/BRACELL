@@ -2,37 +2,50 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Importador de Etiquetas</title>
+    <title>Importador</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h2 { color: #2c3e50; margin-bottom: 25px; }
-        input { margin-bottom: 20px; }
-        button { background: #27ae60; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Upload de Etiquetas</h2>
-        <input type="file" id="fileInput" accept=".csv">
-        <button onclick="processar()">Enviar para o Supabase</button>
-    </div>
+    <input type="file" id="fileInput">
+    <button onclick="processar()">Enviar para o Supabase</button>
+
     <script>
-        const supabase = supabase.createClient('https://kdbrlmvcxzgwylpdcfmq.supabase.co', 'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg');
+        const supabase = supabase.createClient(
+            'https://kdbrlmvcxzgwylpdcfmq.supabase.co', 
+            'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg'
+        );
+
         async function processar() {
-            const file = document.getElementById('fileInput').files[0];
+            console.log("Iniciando...");
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                return alert("Selecione um arquivo!");
+            }
+
             const reader = new FileReader();
             reader.onload = async function(e) {
-                const rows = e.target.result.split(/\r?\n/).slice(1).filter(r => r.trim());
-                const data = rows.map(r => {
-                    const c = r.split(r.includes(';') ? ';' : ',');
-                    return { codigo_antigo: c[0], codigo_novo: c[1], descricao: c[2], umb: c[3], documento: c[4], lote: c[5], ano: parseInt(c[6]), impressora: c[7] };
-                });
-                const { error } = await supabase.from('etiquetas').insert(data);
-                if (error) alert("Erro: " + error.message); else alert("Sucesso!");
+                try {
+                    const text = e.target.result;
+                    const rows = text.split('\n').slice(1);
+                    const data = rows.filter(r => r.trim() !== "").map(row => {
+                        const [c1, c2, c3, c4, c5, c6, c7, c8] = row.split(',');
+                        return { codigo_antigo: c1, codigo_novo: c2, descricao: c3, umb: c4, documento: c5, lote: c6, ano: parseInt(c7), impressora: c8 };
+                    });
+
+                    console.log("Enviando dados:", data);
+                    const { data: result, error } = await supabase.from('etiquetas').insert(data);
+                    
+                    if (error) {
+                        console.error("Erro Supabase:", error);
+                        alert("Erro Supabase: " + error.message);
+                    } else {
+                        alert("Dados enviados com sucesso!");
+                    }
+                } catch (err) {
+                    alert("Erro no código: " + err.message);
+                }
             };
-            reader.readAsText(file);
+            reader.readAsText(fileInput.files[0]);
         }
     </script>
 </body>
