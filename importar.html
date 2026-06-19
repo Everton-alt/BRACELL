@@ -8,9 +8,8 @@
         body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
         h2 { color: #2c3e50; margin-bottom: 25px; }
-        input[type="file"] { margin-bottom: 20px; width: 100%; }
-        button { background: #27ae60; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #219150; }
+        input { margin-bottom: 20px; }
+        button { background: #27ae60; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -19,31 +18,19 @@
         <input type="file" id="fileInput" accept=".csv">
         <button onclick="processar()">Enviar para o Supabase</button>
     </div>
-
     <script>
-        const supabase = supabase.createClient(
-            'https://kdbrlmvcxzgwylpdcfmq.supabase.co', 
-            'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg'
-        );
-
+        const supabase = supabase.createClient('https://kdbrlmvcxzgwylpdcfmq.supabase.co', 'sb_publishable_MJfMXMVTTzR06FrDoZcx-A_ULkcUtxg');
         async function processar() {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput.files.length === 0) return alert("Selecione um arquivo CSV!");
-
-            const file = fileInput.files[0];
+            const file = document.getElementById('fileInput').files[0];
             const reader = new FileReader();
-
             reader.onload = async function(e) {
-                const text = e.target.result;
-                const rows = text.split('\n').slice(1); // Ignora cabeçalho
-                const data = rows.map(row => {
-                    const [codigo_antigo, codigo_novo, descricao, umb, documento, lote, ano, impressora] = row.split(',');
-                    return { codigo_antigo, codigo_novo, descricao, umb, documento, lote, ano, impressora };
+                const rows = e.target.result.split(/\r?\n/).slice(1).filter(r => r.trim());
+                const data = rows.map(r => {
+                    const c = r.split(r.includes(';') ? ';' : ',');
+                    return { codigo_antigo: c[0], codigo_novo: c[1], descricao: c[2], umb: c[3], documento: c[4], lote: c[5], ano: parseInt(c[6]), impressora: c[7] };
                 });
-
                 const { error } = await supabase.from('etiquetas').insert(data);
-                if (error) alert("Erro: " + error.message);
-                else alert("Dados importados com sucesso!");
+                if (error) alert("Erro: " + error.message); else alert("Sucesso!");
             };
             reader.readAsText(file);
         }
