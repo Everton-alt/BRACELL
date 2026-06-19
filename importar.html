@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
+    <meta charset="UTF-8">
+    <title>Importador de Etiquetas</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f3; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #2c3e50; margin-bottom: 25px; }
+        input[type="file"] { margin-bottom: 20px; width: 100%; }
+        button { background: #27ae60; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #219150; }
+    </style>
 </head>
 <body>
-    <input type="file" id="fileInput">
-    <button onclick="processar()">Importar para Supabase</button>
+    <div class="container">
+        <h2>Upload de Etiquetas</h2>
+        <input type="file" id="fileInput" accept=".csv">
+        <button onclick="processar()">Enviar para o Supabase</button>
+    </div>
 
     <script>
         const supabase = supabase.createClient(
@@ -14,12 +27,25 @@
         );
 
         async function processar() {
-            // Lógica de leitura do CSV/Excel...
-            // Após converter para JSON:
-            const { error } = await supabase.from('etiquetas').insert(jsonDosDados);
-            
-            if (error) alert("Erro: " + error.message);
-            else alert("Sucesso!");
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) return alert("Selecione um arquivo CSV!");
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1); // Ignora cabeçalho
+                const data = rows.map(row => {
+                    const [codigo_antigo, codigo_novo, descricao, umb, documento, lote, ano, impressora] = row.split(',');
+                    return { codigo_antigo, codigo_novo, descricao, umb, documento, lote, ano, impressora };
+                });
+
+                const { error } = await supabase.from('etiquetas').insert(data);
+                if (error) alert("Erro: " + error.message);
+                else alert("Dados importados com sucesso!");
+            };
+            reader.readAsText(file);
         }
     </script>
 </body>
